@@ -63,3 +63,15 @@ npm run check:all                # 通常チェックとE2E
 ```
 
 テスト専用サーバーをポート4173で起動し、終了後に停止します。失敗時のスクリーンショットとトレースは `test-results/`、HTMLレポートは `playwright-report/` に保存されます。
+
+## GitHub Actions
+
+`main`へのpushと、`main`を対象とするPull RequestでCIを実行します。Actions画面から手動実行もできます。
+
+- Node.js 26 / Ubuntu 24.04で型チェック、lint、整形チェック、単体テスト、ビルドを実行します。
+- 別ジョブでChromiumと必要なOSライブラリを入れ、E2Eを実行します。
+- E2Eレポートと失敗時のトレース・スクリーンショットを `playwright-results` に7日間保存します。
+- 同じPRに新しいコミットをpushすると、古いCI実行をキャンセルします。
+- CIでは `test.only` が残っていると失敗します。
+
+ワークフローは `.github/workflows/ci.yml` にあります。CIは検証のみを行い、ゲームのデプロイは行いません。
