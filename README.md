@@ -62,7 +62,7 @@ npm run test:e2e:ui               # 対話型のテスト画面
 npm run check:all                # 通常チェックとE2E
 ```
 
-テスト専用サーバーをポート4173で起動し、終了後に停止します。失敗時のスクリーンショットとトレースは `test-results/`、HTMLレポートは `playwright-report/` に保存されます。
+E2E開始時に `npm run build` で `dist/` を生成し、`vite preview` で配布用ビルドをポート4173に配信します。ローカル・CIとも同じ構成を使い、終了後にサーバーを停止します。失敗時のスクリーンショットとトレースは `test-results/`、HTMLレポートは `playwright-report/` に保存されます。
 
 ## GitHub Actions
 
@@ -75,3 +75,5 @@ npm run check:all                # 通常チェックとE2E
 - CIでは `test.only` が残っていると失敗します。
 
 ワークフローは `.github/workflows/ci.yml` にあります。CIは検証のみを行い、ゲームのデプロイは行いません。
+
+mainはPR経由で更新し、型チェック等のジョブとChromium E2Eの成功を必須とします。PRのブランチは最新mainに追従している必要があります。管理者にも保護を適用し、force pushとブランチ削除を禁止します。承認者数の指定はありません。

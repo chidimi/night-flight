@@ -14,7 +14,8 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "check:all": "npm run check && npm run test:e2e"
+    "check:all": "npm run check && npm run test:e2e",
+    "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
     "three": "0.186.1"
