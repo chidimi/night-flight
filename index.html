@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#171815" />
+    <title>夜間飛行 — Night Flight</title>
+  </head>
+  <body>
+    <main id="flight">
+      <canvas id="world" aria-label="夜の空"></canvas
+      ><canvas id="cockpit" aria-label="飛行計器"></canvas>
+      <div id="readings" class="sr-only" aria-label="計器の読み取り"></div>
+      <button id="menu" aria-label="一時停止と操作説明">Ⅱ</button>
+      <div id="overlay">
+        <section>
+          <p class="eyebrow">NIGHT FLIGHT / 夜間飛行</p>
+          <h1>夜のなかへ。</h1>
+          <p id="intro">
+            星が見えなくても、針は動いている。<br />小さな機体と、夜を飛ぶ。
+          </p>
+          <div class="rule"></div>
+          <dl>
+            <div>
+              <dt>← →</dt>
+              <dd>機体を左右に傾ける</dd>
+            </div>
+            <div>
+              <dt>↑ ↓</dt>
+              <dd>機首を下げる / 上げる</dd>
+            </div>
+            <div>
+              <dt>W / S</dt>
+              <dd>出力を上げる / 下げる</dd>
+            </div>
+            <div>
+              <dt>Esc</dt>
+              <dd>一時停止</dd>
+            </div>
+          </dl>
+          <p class="note">
+            姿勢を中央に、高度と速度を穏やかに。<br />燃料は飛行3分で尽きます。一時停止中は減りません。<br />その後は滑空し、海面に触れると飛行は終わります。
+          </p>
+          <label class="volume"
+            >プロペラ音
+            <input
+              id="volume"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.3"
+              aria-label="プロペラ音量" /></label
+          ><button id="start">飛びはじめる <span>→</span></button>
+          <p class="foot">ヘッドフォン推奨 · キーボードで操縦</p>
+          <p id="error" role="alert"></p>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
