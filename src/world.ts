@@ -34,6 +34,17 @@ export function createWorld(canvas: HTMLCanvasElement) {
     new THREE.PointsMaterial({ color: 0xcccccc, size: 1.25, sizeAttenuation: false }),
   );
   scene.add(stars);
+  // A distant, unlit disc: visible in the sky without illuminating the sea.
+  const moonDirection = new THREE.Vector3(-0.28, 0.25, -1).normalize();
+  const moon = new THREE.Mesh(
+    new THREE.CircleGeometry(260, 32),
+    new THREE.MeshBasicMaterial({ color: 0xe0e0e0 }),
+  );
+  moon.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1),
+    moonDirection.clone().negate(),
+  );
+  scene.add(moon);
   const sea = new THREE.Mesh(
     new THREE.PlaneGeometry(120000, 120000),
     new THREE.MeshBasicMaterial({ color: 0x030303 }),
@@ -63,7 +74,13 @@ export function createWorld(canvas: HTMLCanvasElement) {
   });
   const ditherScene = new THREE.Scene(),
     ditherCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const uniforms = { tex: { value: renderTarget.texture }, veil: { value: 0 } };
+  const uniforms = {
+    tex: { value: renderTarget.texture },
+    veil: { value: 0 },
+    cameraBasis: { value: new THREE.Matrix3() },
+    viewScale: { value: new THREE.Vector2() },
+    cloudOffset: { value: new THREE.Vector3() },
+  };
   const material = new THREE.ShaderMaterial({
     uniforms,
     vertexShader: DITHER_VERTEX_SHADER,
@@ -76,11 +93,23 @@ export function createWorld(canvas: HTMLCanvasElement) {
     renderTarget.setSize(width, Math.round((width * viewportHeight) / viewportWidth));
     camera.aspect = viewportWidth / viewportHeight;
     camera.updateProjectionMatrix();
+    const halfHeight = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    uniforms.viewScale.value.set(halfHeight * camera.aspect, halfHeight);
   }
   function draw(state: FlightState) {
     camera.position.set(state.x, state.altitude, state.z);
     camera.rotation.set(state.pitch, -state.heading, -state.bank);
     stars.position.copy(camera.position);
+    moon.position.copy(camera.position).addScaledVector(moonDirection, 24000);
+    camera.updateMatrixWorld();
+    uniforms.cameraBasis.value.setFromMatrix4(camera.matrixWorld);
+    // Simulation time freezes the clouds during pause; world-space rays make
+    // their direction follow the view naturally when banking or turning.
+    uniforms.cloudOffset.value.set(
+      state.x / 3500 + state.time * 0.003,
+      state.altitude / 3500,
+      state.z / 3500,
+    );
     sea.position.set(state.x, 0, state.z);
     const cloudDensity = Math.exp(
       -Math.pow(
