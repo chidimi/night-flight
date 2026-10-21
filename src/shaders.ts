@@ -11,6 +11,7 @@ export const DITHER_VERTEX_SHADER = /* glsl */ `
 export const DITHER_FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
   uniform sampler2D tex;
+  uniform sampler2D cloudNoise;
   uniform float veil;
   uniform mat3 cameraBasis;
   uniform vec2 viewScale;
@@ -29,20 +30,9 @@ export const DITHER_FRAGMENT_SHADER = /* glsl */ `
     return (4.0 * lowBits + highBits + 0.5) / 16.0;
   }
 
-  float hash(vec3 cell) {
-    return fract(sin(dot(cell, vec3(127.1, 311.7, 74.7))) * 43758.5453);
-  }
-
   float noise(vec3 position) {
-    vec3 cell = floor(position);
-    vec3 blend = fract(position);
-    blend = blend * blend * (3.0 - 2.0 * blend);
-    return mix(
-      mix(mix(hash(cell), hash(cell + vec3(1, 0, 0)), blend.x),
-          mix(hash(cell + vec3(0, 1, 0)), hash(cell + vec3(1, 1, 0)), blend.x), blend.y),
-      mix(mix(hash(cell + vec3(0, 0, 1)), hash(cell + vec3(1, 0, 1)), blend.x),
-          mix(hash(cell + vec3(0, 1, 1)), hash(cell + vec3(1, 1, 1)), blend.x), blend.y),
-      blend.z);
+    vec2 plane = position.xz + position.y * vec2(0.37, 0.73);
+    return texture2D(cloudNoise, plane / 64.0).r;
   }
 
   void main() {

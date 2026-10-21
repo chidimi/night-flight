@@ -74,7 +74,23 @@ export function createWorld(canvas: HTMLCanvasElement) {
   });
   const ditherScene = new THREE.Scene(),
     ditherCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  // Reuse a small noise texture instead of evaluating noise hashes per pixel.
+  // Linear filtering and two sampling scales keep the cloud edges continuous.
+  const noiseSize = 64;
+  const noisePixels = new Uint8Array(noiseSize * noiseSize * 4);
+  for (let index = 0; index < noisePixels.length; index += 4) {
+    const shade = Math.floor(random() * 256);
+    noisePixels[index] = shade;
+    noisePixels[index + 1] = shade;
+    noisePixels[index + 2] = shade;
+    noisePixels[index + 3] = 255;
+  }
+  const cloudNoise = new THREE.DataTexture(noisePixels, noiseSize, noiseSize);
+  cloudNoise.wrapS = cloudNoise.wrapT = THREE.RepeatWrapping;
+  cloudNoise.minFilter = cloudNoise.magFilter = THREE.LinearFilter;
+  cloudNoise.needsUpdate = true;
   const uniforms = {
+    cloudNoise: { value: cloudNoise },
     tex: { value: renderTarget.texture },
     veil: { value: 0 },
     cameraBasis: { value: new THREE.Matrix3() },
