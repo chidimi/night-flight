@@ -11,11 +11,6 @@ export const DITHER_VERTEX_SHADER = /* glsl */ `
 export const DITHER_FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
   uniform sampler2D tex;
-  uniform sampler2D cloudNoise;
-  uniform float veil;
-  uniform mat3 cameraBasis;
-  uniform vec2 viewScale;
-  uniform vec3 cloudOffset;
   varying vec2 uvv;
 
   // A 4-by-4 Bayer matrix, expressed arithmetically to avoid dynamic indexing.
@@ -30,26 +25,45 @@ export const DITHER_FRAGMENT_SHADER = /* glsl */ `
     return (4.0 * lowBits + highBits + 0.5) / 16.0;
   }
 
-  float noise(vec3 position) {
-    vec2 plane = position.xz + position.y * vec2(0.37, 0.73);
-    return texture2D(cloudNoise, plane / 64.0).r;
-  }
-
   void main() {
-    vec3 viewRay = normalize(vec3((uvv * 2.0 - 1.0) * viewScale, -1.0));
-    vec3 skyRay = cameraBasis * viewRay;
-    vec3 samplePosition = skyRay * vec3(3.0, 7.0, 3.0) + cloudOffset;
-    float cloudShape = noise(samplePosition) * 0.7
-                     + noise(samplePosition * 2.1) * 0.3;
-    float wisps = smoothstep(0.43, 0.73, cloudShape);
-    float skyMask = smoothstep(-0.08, 0.12, skyRay.y);
-    float obscurity = max(veil, wisps * skyMask * 0.96);
-    // Only a trace of paper in the cloud edges; dense fog stays almost black.
-    float cloudLight = wisps * skyMask * 0.055 * (1.0 - veil);
-    float brightness = texture2D(tex, uvv).r * (1.0 - obscurity) + cloudLight;
+    float brightness = texture2D(tex, uvv).r;
     float threshold = bayer(gl_FragCoord.xy);
     vec3 ink = vec3(23.0, 24.0, 21.0) / 255.0;
     vec3 paper = vec3(216.0, 208.0, 181.0) / 255.0;
     gl_FragColor = vec4(mix(ink, paper, step(threshold, brightness)), 1.0);
+  }
+`;
+
+/** World-space wave streaks establish the sea without lighting the whole scene. */
+export const SEA_VERTEX_SHADER = /* glsl */ `
+  varying vec3 seaPosition;
+
+  void main() {
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    seaPosition = worldPosition.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  }
+`;
+
+export const SEA_FRAGMENT_SHADER = /* glsl */ `
+  precision highp float;
+  uniform float time;
+  uniform vec3 moonDirection;
+  varying vec3 seaPosition;
+
+  void main() {
+    vec3 toSea = seaPosition - cameraPosition;
+    float distanceToSea = length(toSea.xz);
+    vec2 bearing = toSea.xz / max(distanceToSea, 1.0);
+    float moonPath = smoothstep(0.94, 0.999, dot(bearing, normalize(moonDirection.xz)));
+    float phase = seaPosition.z * 0.006
+                + sin(seaPosition.x * 0.0015 + time * 0.2) * 1.5 + time * 0.7;
+    // Fade unresolved wave lines before they alias into a distant checkerboard.
+    float resolved = 1.0 - smoothstep(0.5, 2.0, fwidth(phase));
+    float crests = smoothstep(0.72, 0.98, sin(phase)) * resolved;
+    float brokenReflection = 0.5 + 0.5 * sin(seaPosition.x * 0.0035 - time * 0.4);
+    float shimmer = crests * brokenReflection * (0.12 + moonPath * 0.35);
+    float horizon = 0.025 * smoothstep(1000.0, 18000.0, distanceToSea);
+    gl_FragColor = vec4(vec3(0.012 + horizon + shimmer), 1.0);
   }
 `;
