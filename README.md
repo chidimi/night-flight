@@ -74,6 +74,30 @@ E2E開始時に `npm run build` で `dist/` を生成し、`vite preview` で配
 - 同じPRに新しいコミットをpushすると、古いCI実行をキャンセルします。
 - CIでは `test.only` が残っていると失敗します。
 
-ワークフローは `.github/workflows/ci.yml` にあります。CIは検証のみを行い、ゲームのデプロイは行いません。
+ワークフローは `.github/workflows/ci.yml` にあります。PRでは検証のみを行います。mainでは検証成功後にCloudflareへ自動デプロイします。
 
 mainはPR経由で更新し、型チェック等のジョブとChromium E2Eの成功を必須とします。PRのブランチは最新mainに追従している必要があります。管理者にも保護を適用し、force pushとブランチ削除を禁止します。承認者数の指定はありません。
+
+## Cloudflareへのデプロイ
+
+Workers Static Assetsで `dist/` を公開します。設定は `wrangler.jsonc`、Worker名は `night-flight` です。独自ドメインを設定するまではCloudflareの `workers.dev` を使用します。
+
+mainへのpush、またはmainを対象にしたCIの手動実行で、全検証に成功したあとにデプロイします。E2Eが実際に検証した `dist/` を `tested-dist` アーティファクトとして保存し、デプロイジョブが取得します。公開直前に再ビルドしません。PRの実行にはデプロイ認証を渡しません。
+
+初回は、GitHubリポジトリの Settings → Secrets and variables → Actions に次を登録します。
+
+- `CLOUDFLARE_ACCOUNT_ID`：配信先アカウントのID。
+- `CLOUDFLARE_API_TOKEN`：Cloudflare公式の「Edit Cloudflare Workers」テンプレートを使い、配信先アカウントに対象を絞ったAPIトークン。
+
+トークンはチャットやソースに貼り付けず、GitHub Secretsに直接入力します。CloudflareのWorkers利用開始と `workers.dev` サブドメインの設定も済ませてください。同じアカウントに `night-flight` がある場合は、既存アプリを上書きしないよう名前を変更してください。
+
+[Cloudflare公式のGitHub Actions認証手順](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)
+
+設定の検証だけなら、次を実行できます。公開は行いません。
+
+```sh
+npm run build
+npx wrangler deploy --dry-run
+```
+
+認証情報が未登録の場合はデプロイジョブが明示的に失敗します。登録後はmainのCIを手動実行して再検証・配信できます。CIのアーティファクト保存期間は7日です。
