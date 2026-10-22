@@ -1,3 +1,4 @@
+import { translate, type Locale } from './i18n.ts';
 import type { FlightState } from './flight.ts';
 import { enginePower } from './flight.ts';
 const PAPER_COLOR = '#d8d0b5',
@@ -121,7 +122,13 @@ export function createCockpit(canvas: HTMLCanvasElement) {
     );
     drawText(unit, x, y + radius * 0.76, Math.max(6, radius * 0.1), 0.55);
   }
-  function drawAttitude(x: number, y: number, radius: number, state: FlightState) {
+  function drawAttitude(
+    x: number,
+    y: number,
+    radius: number,
+    state: FlightState,
+    locale: Locale,
+  ) {
     drawBezel(x, y, radius, 'ATTITUDE');
     context.save();
     context.beginPath();
@@ -149,9 +156,15 @@ export function createCockpit(canvas: HTMLCanvasElement) {
     drawLine(x + radius * 0.12, y, x + radius * 0.45, y, PAPER_COLOR, 2);
     drawLine(x - radius * 0.12, y, x, y + 5, PAPER_COLOR, 2);
     drawLine(x, y + 5, x + radius * 0.12, y, PAPER_COLOR, 2);
-    drawText('水平', x, y + radius * 0.76, Math.max(7, radius * 0.12), 0.65);
+    drawText(
+      translate(locale, 'level'),
+      x,
+      y + radius * 0.76,
+      Math.max(7, radius * 0.12),
+      0.65,
+    );
   }
-  function draw(state: FlightState) {
+  function draw(state: FlightState, locale: Locale) {
     context.clearRect(0, 0, viewportWidth, viewportHeight);
     // Keep portrait instruments readable, above the thumb controls.
     const portrait = viewportWidth < 600 && viewportHeight > viewportWidth;
@@ -218,7 +231,7 @@ export function createCockpit(canvas: HTMLCanvasElement) {
       160,
       'KNOTS',
     );
-    drawAttitude(viewportWidth / 2, y, radius, state);
+    drawAttitude(viewportWidth / 2, y, radius, state, locale);
     drawGauge(
       viewportWidth / 2 + spacing,
       y,
