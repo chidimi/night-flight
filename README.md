@@ -2,6 +2,8 @@
 
 Three.jsによるブラウザ用の飛行試作。紙色と墨色の空、アナログ計器、合成したプロペラ音。音楽はありません。
 
+https://night-flight.chidimi.workers.dev/
+
 ## 起動
 
 Node.js 22.12以降を使用します。
