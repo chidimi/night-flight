@@ -1,11 +1,6 @@
 import type { FlightState } from './flight.ts';
 import * as THREE from 'three';
-import {
-  DITHER_VERTEX_SHADER,
-  DITHER_FRAGMENT_SHADER,
-  SEA_VERTEX_SHADER,
-  SEA_FRAGMENT_SHADER,
-} from './shaders.ts';
+import { DITHER_VERTEX_SHADER, DITHER_FRAGMENT_SHADER } from './shaders.ts';
 export function createWorld(canvas: HTMLCanvasElement) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(1);
@@ -39,38 +34,36 @@ export function createWorld(canvas: HTMLCanvasElement) {
     new THREE.PointsMaterial({ color: 0xcccccc, size: 1.25, sizeAttenuation: false }),
   );
   scene.add(stars);
-  // A distant, unlit disc: visible in the sky without illuminating the sea.
-  const moonDirection = new THREE.Vector3(-0.28, 0.25, -1).normalize();
-  const moon = new THREE.Mesh(
-    new THREE.CircleGeometry(260, 32),
-    new THREE.MeshBasicMaterial({ color: 0xe0e0e0 }),
-  );
-  moon.quaternion.setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1),
-    moonDirection.clone().negate(),
-  );
-  scene.add(moon);
-  const seaUniforms = {
-    time: { value: 0 },
-    moonDirection: { value: moonDirection },
-  };
   const sea = new THREE.Mesh(
     new THREE.PlaneGeometry(120000, 120000),
-    new THREE.ShaderMaterial({
-      uniforms: seaUniforms,
-      vertexShader: SEA_VERTEX_SHADER,
-      fragmentShader: SEA_FRAGMENT_SHADER,
-    }),
+    new THREE.MeshBasicMaterial({ color: 0x030303 }),
   );
   sea.rotation.x = -Math.PI / 2;
   scene.add(sea);
+  const lightPositions = [];
+  for (let i = 0; i < 180; i++) {
+    const z = -3000 - random() * 26000,
+      x = 1500 + Math.sin(z * 0.0003) * 1100 + random() * 350;
+    lightPositions.push(x, 3, z);
+  }
+  const lightGeometry = new THREE.BufferGeometry();
+  lightGeometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(lightPositions, 3),
+  );
+  scene.add(
+    new THREE.Points(
+      lightGeometry,
+      new THREE.PointsMaterial({ color: 0x777777, size: 1, sizeAttenuation: false }),
+    ),
+  );
   const renderTarget = new THREE.WebGLRenderTarget(640, 360, {
     minFilter: THREE.NearestFilter,
     magFilter: THREE.NearestFilter,
   });
   const ditherScene = new THREE.Scene(),
     ditherCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const uniforms = { tex: { value: renderTarget.texture } };
+  const uniforms = { tex: { value: renderTarget.texture }, veil: { value: 0 } };
   const material = new THREE.ShaderMaterial({
     uniforms,
     vertexShader: DITHER_VERTEX_SHADER,
@@ -88,9 +81,14 @@ export function createWorld(canvas: HTMLCanvasElement) {
     camera.position.set(state.x, state.altitude, state.z);
     camera.rotation.set(state.pitch, -state.heading, -state.bank);
     stars.position.copy(camera.position);
-    moon.position.copy(camera.position).addScaledVector(moonDirection, 24000);
     sea.position.set(state.x, 0, state.z);
-    seaUniforms.time.value = state.time;
+    const cloudDensity = Math.exp(
+      -Math.pow(
+        (Math.sin(state.z / 4400 + 1.1) + 0.3 * Math.sin(state.x / 2800)) / 0.24,
+        2,
+      ),
+    );
+    uniforms.veil.value = cloudDensity * 0.98;
     renderer.setRenderTarget(renderTarget);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);

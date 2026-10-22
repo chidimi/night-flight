@@ -12,24 +12,6 @@ export function createInstrumentReadings(container: HTMLElement) {
     },
     { name: '高度', min: 0, max: 2400, value: (state: FlightState) => state.altitude },
     {
-      name: '速度',
-      min: 0,
-      max: 260,
-      value: (state: FlightState) => state.speed * 1.94384,
-    },
-    {
-      name: '昇降率',
-      min: -130,
-      max: 130,
-      value: (state: FlightState) => state.vertical,
-    },
-    {
-      name: '機首角',
-      min: -66,
-      max: 66,
-      value: (state: FlightState) => (state.pitch * 180) / Math.PI,
-    },
-    {
       name: 'バンク角',
       min: -66,
       max: 66,

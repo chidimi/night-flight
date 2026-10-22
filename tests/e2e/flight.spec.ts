@@ -66,11 +66,10 @@ test('fuel exhausts at three minutes; glide, sea contact and restart', async ({
   await page.keyboard.down('ArrowUp');
   await page.clock.runFor(5_000);
   await page.keyboard.up('KeyW');
+  await page.keyboard.up('ArrowUp');
   expect(await instrument(page, '出力')).toBe(0);
   expect(await instrument(page, '高度')).toBeLessThan(altitude);
-  // Keep the nose down to reach the sea; neutral flight can now sustain a longer glide.
   await page.clock.runFor(60_000);
-  await page.keyboard.up('ArrowUp');
   await expect(page.getByRole('heading', { name: '飛行のあと。' })).toBeVisible();
   expect(await instrument(page, '高度')).toBe(0);
   await page.getByRole('button', { name: 'もう一度、空へ' }).click();
@@ -79,31 +78,4 @@ test('fuel exhausts at three minutes; glide, sea contact and restart', async ({
   expect(await instrument(page, '燃料')).toBeGreaterThan(99);
   expect(await instrument(page, '出力')).toBe(65);
   expect(await instrument(page, '高度')).toBe(1200);
-});
-
-test('pulling up loses speed; lowering the nose recovers with altitude loss', async ({
-  page,
-}) => {
-  await startFlight(page);
-  const cruiseSpeed = await instrument(page, '速度');
-  await page.keyboard.down('ArrowDown');
-  await page.keyboard.down('KeyS');
-  await page.clock.runFor(8_000);
-  await page.keyboard.up('ArrowDown');
-  await page.keyboard.up('KeyS');
-  const slowSpeed = await instrument(page, '速度');
-  const raisedPitch = await instrument(page, '機首角');
-  const altitude = await instrument(page, '高度');
-  expect(slowSpeed).toBeLessThan(cruiseSpeed * 0.6);
-  expect(raisedPitch).toBeGreaterThan(20);
-
-  await page.keyboard.down('ArrowUp');
-  await page.keyboard.down('KeyW');
-  await page.clock.runFor(4_000);
-  await page.keyboard.up('ArrowUp');
-  await page.keyboard.up('KeyW');
-  expect(await instrument(page, '速度')).toBeGreaterThan(slowSpeed);
-  expect(await instrument(page, '機首角')).toBeLessThan(raisedPitch);
-  expect(await instrument(page, '高度')).toBeLessThan(altitude);
-  await expect(page.locator('#overlay')).toBeHidden();
 });

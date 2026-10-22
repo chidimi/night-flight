@@ -8,9 +8,6 @@ export interface FlightState {
   bank: number;
   heading: number;
   vertical: number;
-  /** Direction of velocity relative to the horizon, independent of pitch. */
-  flightPath: number;
-  stalled: boolean;
   /** Pilot throttle setting, from 0 to 1. */
   throttle: number;
   rollRate: number;
@@ -40,8 +37,6 @@ export function createFlight(): FlightState {
     bank: 0,
     heading: 0,
     vertical: 0,
-    flightPath: 0,
-    stalled: false,
     throttle: 0.65,
     rollRate: 0,
     pitchRate: 0,
@@ -50,77 +45,43 @@ export function createFlight(): FlightState {
     ended: false,
   };
 }
-// A fictional, trimmed light propeller aircraft, not an aircraft-specific model.
-const GRAVITY = 9.81;
-const CRUISE_SPEED = 52;
-const WING_INCIDENCE = 0.06;
-const CRITICAL_ANGLE = 0.26;
-const RECOVERY_ANGLE = 0.19;
-const TRIM_LIFT = 0.2 + 4.8 * WING_INCIDENCE;
-const LIFT_SCALE = GRAVITY / (CRUISE_SPEED ** 2 * TRIM_LIFT);
-const cruiseDrag = (0.025 + 0.07 * TRIM_LIFT ** 2) * CRUISE_SPEED ** 2 * LIFT_SCALE;
-
-export const angleOfAttack = (state: FlightState): number =>
-  state.pitch + WING_INCIDENCE - state.flightPath;
-
-function liftCoefficient(angle: number): number {
-  const attachedLift = 0.2 + 4.8 * clamp(angle, -CRITICAL_ANGLE, CRITICAL_ANGLE);
-  // Separated airflow loses lift progressively, rather than switching it off.
-  const separation = clamp((Math.abs(angle) - CRITICAL_ANGLE) / 0.18, 0, 1);
-  return attachedLift * (1 - separation * 0.75);
-}
-
 export function step(state: FlightState, input: FlightInput, deltaSeconds: number): void {
   if (state.ended) return;
+  // Fuel is tied to active flight time, independently of throttle.
   state.time += deltaSeconds;
   state.fuel = Math.max(0, 1 - state.time / FUEL_DURATION);
   if (state.fuel < 1e-10) state.fuel = 0;
   state.throttle = clamp(state.throttle + (input.power || 0) * deltaSeconds * 0.17, 0, 1);
 
-  const attack = angleOfAttack(state);
-  if (Math.abs(attack) > CRITICAL_ANGLE) state.stalled = true;
-  else if (Math.abs(attack) < RECOVERY_ANGLE) state.stalled = false;
-
-  const controlAuthority = clamp((state.speed / CRUISE_SPEED) ** 2, 0.15, 1.5);
-  const rollAuthority = controlAuthority * (state.stalled ? 0.3 : 1);
-  const targetRollRate = (input.roll || 0) * 0.3 * rollAuthority;
-  // Static stability and the stall break lower the nose. Elevator authority
-  // weakens with airspeed; pulling harder cannot hold the aircraft aloft.
-  const stallPitch = state.stalled ? -Math.sign(attack) * 0.25 : 0;
-  const targetPitchRate =
-    (input.pitch || 0) * 0.18 * controlAuthority -
-    0.6 * (attack - WING_INCIDENCE) +
-    stallPitch;
-  state.rollRate += (targetRollRate - state.rollRate) * Math.min(1, deltaSeconds * 3);
-  state.pitchRate += (targetPitchRate - state.pitchRate) * Math.min(1, deltaSeconds * 2);
+  // Smooth control response before integrating pitch and bank.
+  state.rollRate +=
+    ((input.roll || 0) * 0.3 - state.rollRate) * Math.min(1, deltaSeconds * 3);
+  state.pitchRate +=
+    ((input.pitch || 0) * 0.12 - state.pitchRate) * Math.min(1, deltaSeconds * 3);
   state.bank = clamp(state.bank + state.rollRate * deltaSeconds, -1.15, 1.15);
-  state.pitch = clamp(state.pitch + state.pitchRate * deltaSeconds, -1.15, 1.15);
+  state.pitch = clamp(state.pitch + state.pitchRate * deltaSeconds, -0.5, 0.5);
 
-  const lift = liftCoefficient(attack);
-  const dynamicPressure = state.speed ** 2 * LIFT_SCALE;
-  const liftAcceleration = dynamicPressure * lift;
-  const separatedDrag = state.stalled ? 0.18 : 0;
-  const dragAcceleration = dynamicPressure * (0.025 + 0.07 * lift ** 2 + separatedDrag);
-  // Approximate constant propeller power as thrust along the flight path.
-  const thrustAcceleration =
-    (enginePower(state) / 0.65) * cruiseDrag * (CRUISE_SPEED / Math.max(20, state.speed));
-  const acceleration =
-    thrustAcceleration - dragAcceleration - GRAVITY * Math.sin(state.flightPath);
-  const pathRate =
-    (liftAcceleration * Math.cos(state.bank) - GRAVITY * Math.cos(state.flightPath)) /
-    Math.max(10, state.speed);
-  state.speed = clamp(state.speed + acceleration * deltaSeconds, 8, 130);
-  state.flightPath = clamp(state.flightPath + pathRate * deltaSeconds, -1.3, 1.3);
-  state.vertical = state.speed * Math.sin(state.flightPath);
+  // A trimmed cruise balances thrust; pitch and bank trade speed and altitude.
+  const power = enginePower(state);
+  const targetSpeed = 27 + power * 38.46 - Math.sin(state.pitch) * 32;
+  state.speed += (targetSpeed - state.speed) * deltaSeconds * 0.16;
+  const stallSinkRate = Math.max(0, 32 - state.speed) * 0.55;
+  const targetVerticalSpeed =
+    Math.sin(state.pitch) * state.speed +
+    (power - 0.65) * 6 -
+    (1 - Math.cos(state.bank)) * 7 -
+    stallSinkRate;
+  state.vertical += (targetVerticalSpeed - state.vertical) * deltaSeconds * 0.7;
 
-  // Only horizontal velocity contributes to map travel and coordinated turns.
-  const horizontalSpeed = state.speed * Math.cos(state.flightPath);
-  const turnRate =
-    (liftAcceleration * Math.sin(state.bank)) / Math.max(10, horizontalSpeed);
-  state.heading = (state.heading + turnRate * deltaSeconds + Math.PI * 2) % (Math.PI * 2);
+  // Integrate the turn and position in world coordinates.
+  state.heading =
+    (state.heading +
+      ((9.81 * Math.tan(state.bank)) / Math.max(25, state.speed)) * deltaSeconds +
+      Math.PI * 2) %
+    (Math.PI * 2);
   state.altitude += state.vertical * deltaSeconds;
-  state.x += Math.sin(state.heading) * horizontalSpeed * deltaSeconds;
-  state.z -= Math.cos(state.heading) * horizontalSpeed * deltaSeconds;
+  state.x += Math.sin(state.heading) * state.speed * deltaSeconds;
+  state.z -= Math.cos(state.heading) * state.speed * deltaSeconds;
   if (state.altitude <= 0) {
     state.altitude = 0;
     state.ended = true;
