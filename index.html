@@ -2,7 +2,10 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
     <meta name="theme-color" content="#171815" />
     <title>夜間飛行 — Night Flight</title>
   </head>
@@ -12,6 +15,19 @@
       ><canvas id="cockpit" aria-label="飛行計器"></canvas>
       <div id="readings" class="sr-only" aria-label="計器の読み取り"></div>
       <button id="menu" aria-label="一時停止と操作説明">Ⅱ</button>
+      <div id="touch-controls" aria-label="タッチ操縦" hidden>
+        <div class="stick-group">
+          <div id="stick" aria-label="操縦桿：左右でバンク、上で機首下げ、下で機首上げ">
+            <span></span>
+          </div>
+          <span class="touch-label">操縦桿</span>
+        </div>
+        <div class="power-controls">
+          <button data-power="1" aria-label="出力を上げる">＋</button>
+          <span class="touch-label">出力</span>
+          <button data-power="-1" aria-label="出力を下げる">−</button>
+        </div>
+      </div>
       <div id="overlay">
         <section>
           <p class="eyebrow">NIGHT FLIGHT / 夜間飛行</p>
@@ -20,7 +36,7 @@
             星が見えなくても、針は動いている。<br />小さな機体と、夜を飛ぶ。
           </p>
           <div class="rule"></div>
-          <dl>
+          <dl class="keyboard-help">
             <div>
               <dt>← →</dt>
               <dd>機体を左右に傾ける</dd>
@@ -38,6 +54,9 @@
               <dd>一時停止</dd>
             </div>
           </dl>
+          <p class="touch-help">
+            左の操縦桿：左右で機体を傾ける。<br />上へ押すと機首下げ、下へ引くと機首上げ。<br />右の＋／−を押して出力調整。Ⅱで一時停止。<br />計器を読みやすい横向きがおすすめです。
+          </p>
           <p class="note">
             姿勢を中央に、高度と速度を穏やかに。<br />燃料は飛行3分で尽きます。一時停止中は減りません。<br />その後は滑空し、海面に触れると飛行は終わります。
           </p>
@@ -52,7 +71,7 @@
               value="0.3"
               aria-label="プロペラ音量" /></label
           ><button id="start">飛びはじめる <span>→</span></button>
-          <p class="foot">ヘッドフォン推奨 · キーボードで操縦</p>
+          <p class="foot">ヘッドフォン推奨</p>
           <p id="error" role="alert"></p>
         </section>
       </div>

@@ -1,4 +1,5 @@
 import './style.css';
+import { createTouchControls } from './touch-controls.ts';
 import { createInstrumentReadings } from './instruments.ts';
 import { createFlight, step, type FlightInput } from './flight.ts';
 import { createWorld } from './world.ts';
@@ -53,6 +54,11 @@ const sound = new Propeller();
 const updateReadings = createInstrumentReadings(
   requireElement('#readings', HTMLDivElement),
 );
+const touchContainer = requireElement('#touch-controls', HTMLDivElement);
+const touch = createTouchControls(
+  touchContainer,
+  requireElement('#stick', HTMLDivElement),
+);
 const pressedKeys = new Set<string>();
 let flight = createFlight();
 let mode: FlightMode = 'ready';
@@ -60,12 +66,15 @@ let previousFrame = 0;
 let accumulator = 0;
 
 function resize(): void {
+  touch.reset();
   world?.resize(innerWidth, innerHeight);
   cockpit.resize(innerWidth, innerHeight);
 }
 
 function showOverlay(heading: string, description: string, buttonLabel: string): void {
   pressedKeys.clear();
+  touch.reset();
+  touchContainer.hidden = true;
   overlay.classList.remove('hidden');
   title.textContent = heading;
   intro.innerHTML = description;
@@ -93,15 +102,41 @@ async function startFlight(): Promise<void> {
   mode = 'flying';
   accumulator = 0;
   pressedKeys.clear();
+  touch.reset();
   overlay.classList.add('hidden');
+  touchContainer.hidden = false;
   startButton.blur();
 }
 
 function readInput(): FlightInput {
   return {
-    roll: Number(pressedKeys.has('ArrowRight')) - Number(pressedKeys.has('ArrowLeft')),
-    pitch: Number(pressedKeys.has('ArrowDown')) - Number(pressedKeys.has('ArrowUp')),
-    power: Number(pressedKeys.has('KeyW')) - Number(pressedKeys.has('KeyS')),
+    roll: Math.max(
+      -1,
+      Math.min(
+        1,
+        Number(pressedKeys.has('ArrowRight')) -
+          Number(pressedKeys.has('ArrowLeft')) +
+          touch.input.roll,
+      ),
+    ),
+    pitch: Math.max(
+      -1,
+      Math.min(
+        1,
+        Number(pressedKeys.has('ArrowDown')) -
+          Number(pressedKeys.has('ArrowUp')) +
+          touch.input.pitch,
+      ),
+    ),
+    power: Math.max(
+      -1,
+      Math.min(
+        1,
+        Number(pressedKeys.has('KeyW')) -
+          Number(pressedKeys.has('KeyS')) +
+          touch.input.power,
+      ),
+    ),
   };
 }
 

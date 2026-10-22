@@ -153,8 +153,12 @@ export function createCockpit(canvas: HTMLCanvasElement) {
   }
   function draw(state: FlightState) {
     context.clearRect(0, 0, viewportWidth, viewportHeight);
-    const scale = Math.min(viewportWidth / 1100, viewportHeight / 720);
-    const dashboardTop = viewportHeight * 0.64;
+    // Keep portrait instruments readable, above the thumb controls.
+    const portrait = viewportWidth < 600 && viewportHeight > viewportWidth;
+    const scale = portrait
+      ? Math.min(viewportWidth / 620, viewportHeight / 1100)
+      : Math.min(viewportWidth / 1100, viewportHeight / 720);
+    const dashboardTop = viewportHeight * (portrait ? 0.6 : 0.64);
     // Heavy window frame and angle gently arched dashboard.
     context.fillStyle = INK_COLOR;
     context.beginPath();
@@ -260,7 +264,7 @@ export function createCockpit(canvas: HTMLCanvasElement) {
       Math.ceil(state.fuel * 100),
     );
     const power = enginePower(state);
-    const powerX = viewportWidth / 2 + spacing * 2.05;
+    const powerX = portrait ? viewportWidth - 20 : viewportWidth / 2 + spacing * 2.05;
     drawLine(powerX, y - 15 * scale, powerX, y + 85 * scale, '#777463', 3);
     const powerY = y + 85 * scale - power * 100 * scale;
     drawLine(powerX - 9 * scale, powerY, powerX + 9 * scale, powerY, PAPER_COLOR, 5);
