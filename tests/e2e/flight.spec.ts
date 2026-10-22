@@ -32,7 +32,14 @@ test('start, keyboard controls, pause and resume', async ({ page }) => {
   await page.clock.runFor(1_000);
   await page.keyboard.up('ArrowRight');
   await page.keyboard.up('KeyW');
-  expect(await instrument(page, 'バンク角')).toBeGreaterThan(0);
+  const releaseBank = await instrument(page, 'バンク角');
+  expect(releaseBank).toBeGreaterThan(0);
+  await page.clock.runFor(200);
+  expect(await instrument(page, 'バンク角')).toBeGreaterThan(releaseBank);
+  await page.clock.runFor(3_000);
+  const settledBank = await instrument(page, 'バンク角');
+  await page.clock.runFor(1_000);
+  expect(Math.abs((await instrument(page, 'バンク角')) - settledBank)).toBeLessThan(0.1);
   expect(await instrument(page, '出力')).toBeGreaterThan(65);
   expect(await instrument(page, '燃料')).toBeLessThan(initialFuel);
 

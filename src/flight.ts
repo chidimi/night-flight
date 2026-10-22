@@ -10,6 +10,9 @@ export interface FlightState {
   vertical: number;
   /** Pilot throttle setting, from 0 to 1. */
   throttle: number;
+  /** Actual control-surface deflection, from -1 to 1; keys set a target. */
+  aileron: number;
+  elevator: number;
   rollRate: number;
   pitchRate: number;
   /** Active simulation time in seconds; paused time is excluded. */
@@ -38,6 +41,8 @@ export function createFlight(): FlightState {
     heading: 0,
     vertical: 0,
     throttle: 0.65,
+    aileron: 0,
+    elevator: 0,
     rollRate: 0,
     pitchRate: 0,
     time: 0,
@@ -45,6 +50,40 @@ export function createFlight(): FlightState {
     ended: false,
   };
 }
+// Control travel is measured in full deflections per second. Angular-rate
+// response times are in seconds; releasing a key centres the surface, not the plane.
+const CONTROL_TRAVEL = 3;
+const CONTROL_RETURN = 4.5;
+const ROLL_RESPONSE = 0.45;
+const PITCH_RESPONSE = 0.6;
+
+function moveSurface(current: number, target: number, seconds: number): number {
+  const travel = (target === 0 ? CONTROL_RETURN : CONTROL_TRAVEL) * seconds;
+  return current + clamp(target - current, -travel, travel);
+}
+
+function updateAttitude(state: FlightState, input: FlightInput, seconds: number): void {
+  state.aileron = moveSurface(state.aileron, clamp(input.roll ?? 0, -1, 1), seconds);
+  state.elevator = moveSurface(state.elevator, clamp(input.pitch ?? 0, -1, 1), seconds);
+  // A bounded approximation of airspeed-dependent control effectiveness.
+  // This changes only attitude response, not lift, drag, fuel or glide equations.
+  const authority = clamp((state.speed / 52) ** 2, 0.35, 1.25);
+  const targetRollRate = state.aileron * 0.3 * authority;
+  const targetPitchRate = state.elevator * 0.12 * authority;
+  state.rollRate +=
+    (targetRollRate - state.rollRate) * (1 - Math.exp(-seconds / ROLL_RESPONSE));
+  state.pitchRate +=
+    (targetPitchRate - state.pitchRate) * (1 - Math.exp(-seconds / PITCH_RESPONSE));
+
+  const bank = state.bank + state.rollRate * seconds;
+  const pitch = state.pitch + state.pitchRate * seconds;
+  state.bank = clamp(bank, -1.15, 1.15);
+  state.pitch = clamp(pitch, -0.5, 0.5);
+  // Do not keep accumulating rotation into the existing attitude limits.
+  if (bank !== state.bank) state.rollRate = 0;
+  if (pitch !== state.pitch) state.pitchRate = 0;
+}
+
 export function step(state: FlightState, input: FlightInput, deltaSeconds: number): void {
   if (state.ended) return;
   // Fuel is tied to active flight time, independently of throttle.
@@ -53,13 +92,7 @@ export function step(state: FlightState, input: FlightInput, deltaSeconds: numbe
   if (state.fuel < 1e-10) state.fuel = 0;
   state.throttle = clamp(state.throttle + (input.power || 0) * deltaSeconds * 0.17, 0, 1);
 
-  // Smooth control response before integrating pitch and bank.
-  state.rollRate +=
-    ((input.roll || 0) * 0.3 - state.rollRate) * Math.min(1, deltaSeconds * 3);
-  state.pitchRate +=
-    ((input.pitch || 0) * 0.12 - state.pitchRate) * Math.min(1, deltaSeconds * 3);
-  state.bank = clamp(state.bank + state.rollRate * deltaSeconds, -1.15, 1.15);
-  state.pitch = clamp(state.pitch + state.pitchRate * deltaSeconds, -0.5, 0.5);
+  updateAttitude(state, input, deltaSeconds);
 
   // A trimmed cruise balances thrust; pitch and bank trade speed and altitude.
   const power = enginePower(state);
