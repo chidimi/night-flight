@@ -176,3 +176,95 @@ button:focus-visible {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+#touch-controls,
+.touch-help {
+  display: none;
+}
+
+@media (any-pointer: coarse) {
+  #flight {
+    min-height: 0;
+  }
+  #menu {
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    width: 44px;
+    height: 44px;
+  }
+  #overlay {
+    padding: max(16px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    align-items: safe center;
+  }
+  .keyboard-help {
+    display: none;
+  }
+  .touch-help {
+    display: block;
+    font-size: 12px;
+    line-height: 1.8;
+    opacity: 0.75;
+  }
+  #touch-controls:not([hidden]) {
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .stick-group,
+  .power-controls {
+    position: absolute;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .stick-group {
+    left: max(16px, env(safe-area-inset-left));
+  }
+  .power-controls {
+    right: max(16px, env(safe-area-inset-right));
+  }
+  #stick,
+  .power-controls button {
+    pointer-events: auto;
+    touch-action: none;
+    background: #171815cc;
+    border: 1px solid #d8d0b566;
+    -webkit-touch-callout: none;
+  }
+  #stick {
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+  }
+  #stick span {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #d8d0b599;
+    border-radius: 50%;
+    background: #d8d0b51a;
+    transform: translate(var(--stick-x, 0px), var(--stick-y, 0px));
+    pointer-events: none;
+  }
+  .power-controls button {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    font-size: 22px;
+  }
+  .power-controls button.held {
+    background: #d8d0b533;
+  }
+  .touch-label {
+    font-size: 10px;
+    opacity: 0.65;
+  }
+}
