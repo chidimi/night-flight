@@ -11,25 +11,52 @@
   </head>
   <body>
     <main id="flight">
-      <canvas id="world" aria-label="夜の空"></canvas
-      ><canvas id="cockpit" aria-label="飛行計器"></canvas>
-      <div id="readings" class="sr-only" aria-label="計器の読み取り"></div>
-      <button id="menu" aria-label="一時停止と操作説明">Ⅱ</button>
-      <div id="touch-controls" aria-label="タッチ操縦" hidden>
+      <canvas id="world" data-i18n-label="sky" aria-label="夜の空"></canvas
+      ><canvas id="cockpit" data-i18n-label="cockpit" aria-label="飛行計器"></canvas>
+      <div
+        id="readings"
+        class="sr-only"
+        data-i18n-label="readings"
+        aria-label="計器の読み取り"
+      ></div>
+      <button id="menu" data-i18n-label="pauseMenu" aria-label="一時停止と操作説明">
+        Ⅱ
+      </button>
+      <div
+        id="touch-controls"
+        data-i18n-label="touchControls"
+        aria-label="タッチ操縦"
+        hidden
+      >
         <div class="stick-group">
-          <div id="stick" aria-label="操縦桿：左右でバンク、上で機首下げ、下で機首上げ">
+          <div
+            id="stick"
+            data-i18n-label="stickDescription"
+            aria-label="操縦桿：左右でバンク、上で機首下げ、下で機首上げ"
+          >
             <span></span>
           </div>
-          <span class="touch-label">操縦桿</span>
+          <span class="touch-label" data-i18n="stick">操縦桿</span>
         </div>
         <div class="power-controls">
-          <button data-power="1" aria-label="出力を上げる">＋</button>
-          <span class="touch-label">出力</span>
-          <button data-power="-1" aria-label="出力を下げる">−</button>
+          <button data-power="1" data-i18n-label="powerUp" aria-label="出力を上げる">
+            ＋
+          </button>
+          <span class="touch-label" data-i18n="power">出力</span>
+          <button data-power="-1" data-i18n-label="powerDown" aria-label="出力を下げる">
+            −
+          </button>
         </div>
       </div>
       <div id="overlay">
         <section>
+          <label class="language"
+            >Language / 言語
+            <select id="language" aria-label="Language / 言語">
+              <option value="ja" lang="ja">日本語</option>
+              <option value="en" lang="en">English</option>
+            </select>
+          </label>
           <p class="eyebrow">NIGHT FLIGHT / 夜間飛行</p>
           <h1>夜のなかへ。</h1>
           <p id="intro">
@@ -39,29 +66,29 @@
           <dl class="keyboard-help">
             <div>
               <dt>← →</dt>
-              <dd>機体を左右に傾ける</dd>
+              <dd data-i18n="bankHelp">機体を左右に傾ける</dd>
             </div>
             <div>
               <dt>↑ ↓</dt>
-              <dd>機首を下げる / 上げる</dd>
+              <dd data-i18n="pitchHelp">機首を下げる / 上げる</dd>
             </div>
             <div>
               <dt>W / S</dt>
-              <dd>出力を上げる / 下げる</dd>
+              <dd data-i18n="powerHelp">出力を上げる / 下げる</dd>
             </div>
             <div>
               <dt>Esc</dt>
-              <dd>一時停止</dd>
+              <dd data-i18n="pause">一時停止</dd>
             </div>
           </dl>
-          <p class="touch-help">
+          <p class="touch-help" data-i18n="touchHelp">
             左の操縦桿：左右で機体を傾ける。<br />上へ押すと機首下げ、下へ引くと機首上げ。<br />右の＋／−を押して出力調整。Ⅱで一時停止。<br />計器を読みやすい横向きがおすすめです。
           </p>
-          <p class="note">
+          <p class="note" data-i18n="note">
             姿勢を中央に、高度と速度を穏やかに。<br />燃料は飛行3分で尽きます。一時停止中は減りません。<br />その後は滑空し、海面に触れると飛行は終わります。
           </p>
           <label class="volume"
-            >プロペラ音
+            ><span data-i18n="propeller">プロペラ音</span>
             <input
               id="volume"
               type="range"
@@ -69,9 +96,10 @@
               max="1"
               step="0.01"
               value="0.3"
+              data-i18n-label="volume"
               aria-label="プロペラ音量" /></label
           ><button id="start">飛びはじめる <span>→</span></button>
-          <p class="foot">ヘッドフォン推奨</p>
+          <p class="foot" data-i18n="headphones">ヘッドフォン推奨</p>
           <p id="error" role="alert"></p>
         </section>
       </div>

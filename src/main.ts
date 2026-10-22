@@ -1,4 +1,14 @@
 import './style.css';
+import {
+  initialLocale,
+  isLocale,
+  saveLocale,
+  translate,
+  translateDocument,
+  type MessageKey,
+} from './i18n.ts';
+let locale = initialLocale();
+let errorKey: MessageKey | undefined;
 import { createTouchControls } from './touch-controls.ts';
 import { createInstrumentReadings } from './instruments.ts';
 import { createFlight, step, type FlightInput } from './flight.ts';
@@ -29,6 +39,7 @@ function requireElement<T extends Element>(
   return element;
 }
 
+const languageControl = requireElement('#language', HTMLSelectElement);
 const overlay = requireElement('#overlay', HTMLDivElement);
 const startButton = requireElement('#start', HTMLButtonElement);
 const menuButton = requireElement('#menu', HTMLButtonElement);
@@ -43,8 +54,7 @@ let world: ReturnType<typeof createWorld> | undefined;
 try {
   world = createWorld(worldCanvas);
 } catch (error) {
-  errorMessage.textContent =
-    '3D描画を開始できません。WebGLが使えるブラウザで開いてください。';
+  errorKey = 'webglError';
   startButton.disabled = true;
   console.error(error);
 }
@@ -71,24 +81,37 @@ function resize(): void {
   cockpit.resize(innerWidth, innerHeight);
 }
 
-function showOverlay(heading: string, description: string, buttonLabel: string): void {
+function updateLanguage(): void {
+  translateDocument(locale);
+  languageControl.value = locale;
+  const screen = mode === 'ended' ? 'ended' : mode === 'paused' ? 'paused' : 'ready';
+  title.textContent = translate(locale, `${screen}Title`);
+  intro.textContent = translate(locale, `${screen}Intro`);
+  const label = translate(
+    locale,
+    screen === 'ready' ? 'start' : screen === 'paused' ? 'resume' : 'restart',
+  );
+  const arrow = document.createElement('span');
+  arrow.textContent = '→';
+  arrow.setAttribute('aria-hidden', 'true');
+  startButton.replaceChildren(document.createTextNode(label + ' '), arrow);
+  errorMessage.textContent = errorKey ? translate(locale, errorKey) : '';
+  updateReadings(flight, locale);
+  cockpit.draw(flight, locale);
+}
+
+function showOverlay(): void {
   pressedKeys.clear();
   touch.reset();
   touchContainer.hidden = true;
   overlay.classList.remove('hidden');
-  title.textContent = heading;
-  intro.innerHTML = description;
-  startButton.innerHTML = `${buttonLabel} <span>→</span>`;
+  updateLanguage();
 }
 
 function pause(): void {
   if (mode !== 'flying') return;
   mode = 'paused';
-  showOverlay(
-    '夜は、ここに。',
-    '飛行を一時停止しています。<br>同じ空から、続きを。',
-    '飛行に戻る',
-  );
+  showOverlay();
   sound.update(flight, false);
 }
 
@@ -96,7 +119,8 @@ async function startFlight(): Promise<void> {
   try {
     await sound.init();
   } catch {
-    errorMessage.textContent = '音を開始できませんでした。無音で飛行できます。';
+    errorKey = 'audioError';
+    updateLanguage();
   }
   if (mode === 'ended') flight = createFlight();
   mode = 'flying';
@@ -149,11 +173,7 @@ function advanceFlight(elapsedSeconds: number): void {
   }
   if (flight.ended) {
     mode = 'ended';
-    showOverlay(
-      '飛行のあと。',
-      'プロペラは止まりました。<br>夜は、続いています。',
-      'もう一度、空へ',
-    );
+    showOverlay();
   }
 }
 
@@ -163,10 +183,17 @@ function frame(now: number): void {
   if (mode === 'flying') advanceFlight(elapsedSeconds);
   sound.update(flight, mode === 'flying');
   world?.draw(flight);
-  cockpit.draw(flight);
-  updateReadings(flight);
+  cockpit.draw(flight, locale);
+  updateReadings(flight, locale);
   requestAnimationFrame(frame);
 }
+
+languageControl.addEventListener('change', () => {
+  if (!isLocale(languageControl.value)) return;
+  locale = languageControl.value;
+  saveLocale(locale);
+  updateLanguage();
+});
 
 startButton.addEventListener('click', () => {
   void startFlight();
@@ -194,5 +221,6 @@ addEventListener('resize', resize);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) pause();
 });
+updateLanguage();
 resize();
 requestAnimationFrame(frame);
